@@ -1,0 +1,33 @@
+deploy_master:
+  environment:
+    name: main
+  variables:
+    IMAGE: "${CI_REGISTRY_IMAGE}:${CI_PIPELINE_ID}"
+  before_script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+  script:
+  - ssh-add <(echo "$SSH_PRIVATE_KEY")
+  - ssh matz@$SSH_KNOWN_HOST "cd /var/www/html/ever_node && sudo git reset --hard && git pull origin main && /var/www/html/ever_node/deploy.sh"
+  only:
+    - main
+#deploy_beta:
+#  environment:
+#    name: beta
+#  variables:
+#    IMAGE: "${CI_REGISTRY_IMAGE}:${CI_PIPELINE_ID}"
+#  before_script:
+#    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+#    - eval $(ssh-agent -s)
+#    - mkdir -p ~/.ssh
+#    - chmod 700 ~/.ssh
+#    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+#  script:
+#    - ssh-add <(echo "$SSH_PRIVATE_KEY")
+#    - ssh root@$SSH_KNOWN_HOST -p 22 "cd /var/www/lotto-dev && git pull origin beta && rm -R .nuxt && yarn build && yarn generate && exit"
+#  only:
+#    - beta
+#      - ssh matz@$SSH_KNOWN_HOST -p 22 "cd /var/www/html/blog && git pull origin master && cd /var/www/html/blog/resources/frontend/app && npm run build"
