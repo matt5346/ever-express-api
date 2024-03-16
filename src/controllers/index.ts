@@ -149,28 +149,9 @@ export class WalletCbController {
   @POST
   async index(newData: any): Promise<{ success: boolean; message?: string }> {
     try {
-      console.log(newData, "----newDataallet/callback");
-
       if (!newData) return { success: false };
       if (newData.transactionDirection !== TxType.DEPOSIT) {
         return { success: false };
-      }
-
-      const txExist = await AppDataSource.createEntityManager().findOne(
-        WalletTxEntity,
-        {
-          where: {
-            txHash: newData.transactionHash,
-            address: newData.account.hex
-          }
-        }
-      );
-
-      if (txExist) {
-        return {
-          success: false,
-          message: "Tx exist"
-        };
       }
 
       const addressBalance = await getWalletBalance(newData.account.hex);
@@ -179,6 +160,7 @@ export class WalletCbController {
       // const minEver = 10 ** 8 * 6;
 
       console.log(addressBalance, "---addressBalance");
+
       // TODO: checking for MIN DEPOSIT
       // TODO: INSTANT WITHDRAW ON DEPOSIT
       // if (new BN(addressBalance).lessThan(minEver)) {
@@ -187,18 +169,10 @@ export class WalletCbController {
       //   await awaitDelay(2000);
       // }
 
-      const isDeposit = newData?.transactionDirection === TxType.DEPOSIT;
-      AppDataSource.createEntityManager().save(WalletTxEntity, {
-        address: newData.account.hex,
-        txHash: newData.transactionHash ?? "",
-        amount: newData.balanceChange,
-        time: Date.now().toString(),
-        isDeposit
-      });
-
       return {
         success: true
       };
+
     } catch (e) {
       console.log(e, "/wallet/callback");
 
@@ -209,36 +183,14 @@ export class WalletCbController {
   }
 }
 
-// TODO VALIDATION id
-@Path("/create/wallet/:id")
+@Path("/create/wallet")
 export class WalletCreateController {
   @GET
-  async index(@PathParam("id") userId: string): Promise<any> {
+  async index(): Promise<any> {
     try {
       const timestamp = Date.now().toString();
       const uri = "/ton/v3/address/create";
       const body = "{}";
-
-      if (!userId) return false;
-
-      const walletByUser = await AppDataSource.createEntityManager().findOne(
-        WalletEntity,
-        {
-          where: {
-            userId
-          }
-        }
-      );
-
-      // wallet for such user exist
-      if (walletByUser) {
-        return {
-          success: true,
-          result: {
-            public: walletByUser.address
-          }
-        };
-      }
 
       const stringToSign = timestamp + uri + body;
       const signature = createSignature(stringToSign);
@@ -262,13 +214,6 @@ export class WalletCreateController {
 
       let item = null;
 
-      if (newAddress) {
-        item = await AppDataSource.createEntityManager().findOne(WalletEntity, {
-          where: {
-            address: newAddress
-          }
-        });
-      }
 
       if (item || !newAddress) {
         return {
@@ -278,12 +223,6 @@ export class WalletCreateController {
           }
         };
       }
-
-      AppDataSource.createEntityManager().save(WalletEntity, {
-        address: newAddress,
-        userId,
-        time: Date.now().toString()
-      });
 
       return {
         success: true,
